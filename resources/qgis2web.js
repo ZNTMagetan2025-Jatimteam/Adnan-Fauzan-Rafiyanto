@@ -501,6 +501,119 @@ function onSingleClickWMS(evt) {
 
 map.on('singleclick', onSingleClickFeatures);
 map.on('singleclick', onSingleClickWMS);
+// ==== Tap-friendly Select (kompatibel, tidak bikin legend hilang) ====
+// Jangan set "condition" (biar default singleClick) -> aman lintas versi
+var tapSelect = new ol.interaction.Select({
+  hitTolerance: hasTouchScreen ? 16 : 4,
+  // Filter layer aman: cek source vector saja (tanpa VectorImage)
+  layers: function (l) {
+    if (!l) return false;
+    if (l.get && l.get('interactive') === false) return false;
+    var src = l.getSource && l.getSource();
+    return !!(src && src instanceof ol.source.Vector);
+  },
+  style: null
+});
+map.addInteraction(tapSelect);
+
+// WMS jangan jalan kalau sudah kena vector
+window.__lastVectorHit = false;
+
+tapSelect.on('select', function (e) {
+  window.__lastVectorHit = false;
+
+  if (!e.selected.length) { // kosong -> tutup popup
+    container.style.display = 'none';
+    return;
+  }
+
+  var coord = e.mapBrowserEvent.coordinate;
+  var pixel = map.getEventPixel(e.mapBrowserEvent.originalEvent);
+
+  var popupText = '<ul>';
+  var found = false;
+
+  // Ambil (feature, layer) via forEachFeatureAtPixel — pakai options kalau ada, fallback kalau tidak
+  function renderAtPixel() {
+    return map.forEachFeatureAtPixel(pixel, function (feature, layer) {
+      if (!(layer && feature instanceof ol.Feature)) return;
+      if (layer.get('interactive') === false) return;
+
+      var clustered = feature.get('features'); // cluster?
+      if (Array.isArray(clustered) && clustered.length) {
+        for (var i = 0; i < clustered.length; i++) {
+          var f = clustered[i];
+          var keys = f.getKeys();
+          popupText += '<li><table>';
+          popupText += '<a><b>' + (layer.get('popuplayertitle') || layer.get('title') || 'Info') + '</b></a>';
+          popupText += createPopupField(f, keys, layer);
+          popupText += '</table></li>';
+        }
+        try {
+          featureOverlay.getSource().clear();
+          featureOverlay.getSource().addFeature(clustered[0]);
+        } catch (_) {}
+      } else {
+        var keys2 = feature.getKeys();
+        popupText += '<li><table>';
+        popupText += '<a><b>' + (layer.get('popuplayertitle') || layer.get('title') || 'Info') + '</b></a>';
+        popupText += createPopupField(feature, keys2, layer);
+        popupText += '</table></li>';
+        try {
+          featureOverlay.getSource().clear();
+          featureOverlay.getSource().addFeature(feature);
+        } catch (_) {}
+      }
+
+      found = true;
+      return true; // cukup satu layer
+    }, {
+      hitTolerance: hasTouchScreen ? 16 : 4,
+      layerFilter: function (l) { return !l || l.get('interactive') !== false; }
+    });
+  }
+
+  // panggil dengan try/catch utk OL lama yang belum dukung options
+  try { renderAtPixel(); } catch (e2) {
+    map.forEachFeatureAtPixel(pixel, function (feature, layer) {
+      if (!(layer && feature instanceof ol.Feature)) return;
+      if (layer.get('interactive') === false) return;
+
+      var clustered = feature.get('features');
+      if (Array.isArray(clustered) && clustered.length) {
+        for (var i = 0; i < clustered.length; i++) {
+          var f = clustered[i];
+          var keys = f.getKeys();
+          popupText += '<li><table>';
+          popupText += '<a><b>' + (layer.get('popuplayertitle') || layer.get('title') || 'Info') + '</b></a>';
+          popupText += createPopupField(f, keys, layer);
+          popupText += '</table></li>';
+        }
+        try { featureOverlay.getSource().clear(); featureOverlay.getSource().addFeature(clustered[0]); } catch(_) {}
+      } else {
+        var keys2 = feature.getKeys();
+        popupText += '<li><table>';
+        popupText += '<a><b>' + (layer.get('popuplayertitle') || layer.get('title') || 'Info') + '</b></a>';
+        popupText += createPopupField(feature, keys2, layer);
+        popupText += '</table></li>';
+        try { featureOverlay.getSource().clear(); featureOverlay.getSource().addFeature(feature); } catch(_) {}
+      }
+      found = true;
+      return true;
+    });
+  }
+
+  if (found) {
+    popupText += '</ul>';
+    content.innerHTML = popupText;
+    container.style.display = 'block';
+    overlayPopup.setPosition(coord);
+    window.__lastVectorHit = true;
+  } else {
+    container.style.display = 'none';
+  }
+});
+
 
 //get container
 var topLeftContainerDiv = document.getElementById('top-left-container')
