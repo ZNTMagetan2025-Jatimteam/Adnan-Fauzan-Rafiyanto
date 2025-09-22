@@ -136,11 +136,11 @@ var featureOverlay = new ol.layer.Vector({
     }),
     style: [new ol.style.Style({
         stroke: new ol.style.Stroke({
-            color: '#f00',
+            color: 'rgba(255, 213, 0, 1)',
             width: 1
         }),
         fill: new ol.style.Fill({
-            color: 'rgba(255,0,0,0.1)'
+            color: 'rgba(255, 196, 0, 0.1)'
         }),
     })],
     updateWhileAnimating: true, // optional, for instant visual feedback
@@ -501,6 +501,7 @@ function onSingleClickWMS(evt) {
 
 map.on('singleclick', onSingleClickFeatures);
 map.on('singleclick', onSingleClickWMS);
+
 // ==== Tap-friendly Select (kompatibel, tidak bikin legend hilang) ====
 // Jangan set "condition" (biar default singleClick) -> aman lintas versi
 var tapSelect = new ol.interaction.Select({
@@ -613,6 +614,7 @@ tapSelect.on('select', function (e) {
     container.style.display = 'none';
   }
 });
+
 
 
 //get container
@@ -1346,6 +1348,7 @@ document.addEventListener('DOMContentLoaded', function() {
     layersList.forEach(offIfNotBase);
   }
 })();
+
     /* === MATIKAN LAYER DATA SEBELUM DIKLIK DI LEGENDA (kecuali basemap) === */
 (function turnOffLayersForMobile() {
   // deteksi & matikan semua layer non-basemap di layersList
@@ -1376,3 +1379,4 @@ document.addEventListener('DOMContentLoaded', function() {
     layersList.forEach(offIfNotBase);
   }
 })();
+
